@@ -4,11 +4,7 @@ import cors from '@koa/cors';
 import { connectDatabase } from './configs/database.js';
 import { errorHandler } from './middlewares/error-handler.middleware.js';
 import { responseHandler } from './middlewares/response-handler.middleware.js';
-import { validateEnv } from './utils/env-validator.js';
 import userRoutes from './routes/user.routes.js';
-
-// 验证环境变量
-validateEnv();
 
 // 创建 Koa 实例
 const app = new Koa();
@@ -24,7 +20,7 @@ connectDatabase()
 // 注册中间件
 app.use(cors()); // 启用跨域
 app.use(bodyParser()); // 解析请求体
-app.use(errorHandler); // 错误处理（需要最先注册以捕获所有错误）
+app.use(errorHandler); // 错误处理
 app.use(responseHandler); // 响应格式化
 
 // 注册路由

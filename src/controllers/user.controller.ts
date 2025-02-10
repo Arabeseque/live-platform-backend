@@ -3,7 +3,7 @@ import bcrypt from 'bcrypt';
 import User from '../models/user.model.js';
 import { CreateUserDTO, UpdateUserDTO, UserQueryDTO, toUserResponseDTO } from '../dto/user.dto.js';
 import { success, successWithPagination, handlePagination } from '../utils/response.js';
-import { ValidationError, NotFoundError, ConflictError } from '../utils/errors.js';
+import { ValidationError, NotFoundError, ConflictError, AuthorizationError } from '../utils/errors.js';
 
 /**
  * 用户控制器
@@ -47,6 +47,14 @@ export class UserController {
   static async getById(ctx: Context) {
     const { id } = ctx.params;
     const user = await User.findById(id);
+    
+    // 验证权限：只有管理员或本人可以查看详细信息
+    const currentUser = ctx.state.user;
+    const isAdmin = currentUser.role === 'admin';
+    const isSelf = currentUser.id === id;
+    if (!isAdmin && !isSelf) {
+      throw new AuthorizationError('没有权限查看其他用户的信息');
+    }
 
     if (!user) {
       throw new NotFoundError('用户不存在');
@@ -61,6 +69,14 @@ export class UserController {
   static async update(ctx: Context) {
     const { id } = ctx.params;
     const updateData: UpdateUserDTO = ctx.request.body as UpdateUserDTO;
+
+    // 验证权限：只有管理员或本人可以更新用户信息
+    const currentUser = ctx.state.user;
+    const isAdmin = currentUser.role === 'admin';
+    const isSelf = currentUser.id === id;
+    if (!isAdmin && !isSelf) {
+      throw new AuthorizationError('没有权限修改其他用户的信息');
+    }
 
     // 如果更新手机号，检查是否已存在
     if (updateData.phone) {
@@ -99,6 +115,13 @@ export class UserController {
    * 获取用户列表
    */
   static async list(ctx: Context) {
+    // 验证权限：只有管理员可以获取用户列表
+    const currentUser = ctx.state.user;
+    const isAdmin = currentUser.role === 'admin';
+    if (!isAdmin) {
+      throw new AuthorizationError('没有权限访问用户列表');
+    }
+
     const query: UserQueryDTO = ctx.query;
     const { page, limit } = handlePagination(query);
 
@@ -144,6 +167,13 @@ export class UserController {
    */
   static async delete(ctx: Context) {
     const { id } = ctx.params;
+
+    // 验证权限：只有管理员可以停用用户
+    const currentUser = ctx.state.user;
+    const isAdmin = currentUser.role === 'admin';
+    if (!isAdmin) {
+      throw new AuthorizationError('没有权限停用用户');
+    }
     
     const user = await User.findByIdAndUpdate(
       id,

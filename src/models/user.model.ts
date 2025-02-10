@@ -81,10 +81,6 @@ const UserSchema = new Schema<IUser>({
   }
 });
 
-// 索引
-UserSchema.index({ phone: 1 }, { unique: true });
-UserSchema.index({ username: 1 }, { unique: true });
-
 // 虚拟字段：完整的头像URL
 UserSchema.virtual('avatar_full_url').get(function() {
   if (this.avatar_url.startsWith('http')) {

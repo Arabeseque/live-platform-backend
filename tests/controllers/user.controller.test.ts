@@ -15,17 +15,26 @@ const mockUser: CreateUserDTO = {
   role: UserRole.USER
 };
 
+const mockAdminUser = {
+  id: 'admin-id',
+  username: 'admin',
+  role: UserRole.ADMIN
+};
+
 // 模拟 Koa Context
-const createMockContext = (data?: any): Context => ({
+const createMockContext = (data?: any, user = mockAdminUser): Context => ({
   app: {} as any,
   request: {
     body: data
+  },
+  state: {
+    user
   },
   params: {},
   query: {},
   status: 0,
   body: null,
-  ...({} as any) // 其他必要的Context属性
+  ...({} as any)
 });
 
 describe('UserController', () => {
@@ -81,7 +90,7 @@ describe('UserController', () => {
   });
 
   describe('getById', () => {
-    it('应该获取到用户详情', async () => {
+    it('管理员应该能获取任意用户详情', async () => {
       // 先创建用户
       const createCtx = createMockContext(mockUser);
       await UserController.create(createCtx);
@@ -99,6 +108,41 @@ describe('UserController', () => {
       });
     });
 
+    it('普通用户只能获取自己的详情', async () => {
+      // 先创建用户
+      const createCtx = createMockContext(mockUser);
+      await UserController.create(createCtx);
+      const userId = (createCtx.body as any).data.id;
+
+      // 用户查看自己的信息
+      const selfCtx = createMockContext(null, {
+        id: userId,
+        username: mockUser.username,
+        role: UserRole.USER
+      });
+      selfCtx.params = { id: userId };
+      await UserController.getById(selfCtx);
+
+      expect((selfCtx.body as any).data.id).toBe(userId);
+    });
+
+    it('普通用户不能获取其他用户的详情', async () => {
+      // 先创建两个用户
+      const createCtx = createMockContext(mockUser);
+      await UserController.create(createCtx);
+      const userId = (createCtx.body as any).data.id;
+
+      // 用另一个用户尝试查看信息
+      const ctx = createMockContext(null, {
+        id: 'other-user-id',
+        username: 'otheruser',
+        role: UserRole.USER
+      });
+      ctx.params = { id: userId };
+      await expect(UserController.getById(ctx))
+        .rejects.toThrow('没有权限查看其他用户的信息');
+    });
+
     it('当用户不存在时应该抛出错误', async () => {
       const ctx = createMockContext();
       ctx.params = { id: new mongoose.Types.ObjectId().toString() };
@@ -110,7 +154,7 @@ describe('UserController', () => {
   });
 
   describe('update', () => {
-    it('应该成功更新用户信息', async () => {
+    it('管理员应该能更新任意用户信息', async () => {
       // 先创建用户
       const createCtx = createMockContext(mockUser);
       await UserController.create(createCtx);
@@ -132,6 +176,48 @@ describe('UserController', () => {
       });
     });
 
+    it('用户应该能更新自己的信息', async () => {
+      // 先创建用户
+      const createCtx = createMockContext(mockUser);
+      await UserController.create(createCtx);
+      const userId = (createCtx.body as any).data.id;
+
+      // 用户更新自己的信息
+      const updateData = {
+        nickname: '新昵称',
+        phone: '13900139000'
+      };
+      const ctx = createMockContext(updateData, {
+        id: userId,
+        username: mockUser.username,
+        role: UserRole.USER
+      });
+      ctx.params = { id: userId };
+      await UserController.update(ctx);
+
+      expect((ctx.body as any).data).toMatchObject({
+        id: userId,
+        nickname: updateData.nickname,
+        phone: updateData.phone
+      });
+    });
+
+    it('用户不能更新其他用户的信息', async () => {
+      // 先创建用户
+      const createCtx = createMockContext(mockUser);
+      await UserController.create(createCtx);
+      const userId = (createCtx.body as any).data.id;
+
+      // 其他用户尝试更新信息
+      const ctx = createMockContext({ nickname: '新昵称' }, {
+        id: 'other-user-id',
+        username: 'otheruser',
+        role: UserRole.USER
+      });
+      ctx.params = { id: userId };
+      await expect(UserController.update(ctx)).rejects.toThrow('没有权限修改其他用户的信息');
+    });
+
     it('当更新不存在的用户时应该抛出错误', async () => {
       const ctx = createMockContext({ nickname: '新昵称' });
       ctx.params = { id: new mongoose.Types.ObjectId().toString() };
@@ -144,7 +230,7 @@ describe('UserController', () => {
 
   describe('list', () => {
     it('应该获取用户列表', async () => {
-      // 创建多个用户
+      // 管理员创建多个用户
       const users = [
         { ...mockUser, username: 'user1', phone: '13800138001' },
         { ...mockUser, username: 'user2', phone: '13800138002' },
@@ -155,7 +241,7 @@ describe('UserController', () => {
         await UserController.create(createMockContext(user));
       }
 
-      // 获取用户列表
+      // 管理员获取用户列表
       const ctx = createMockContext();
       ctx.query = { page: '1', limit: '10' };
       await UserController.list(ctx);
@@ -165,6 +251,20 @@ describe('UserController', () => {
       expect(responseData.list).toHaveLength(3);
       expect(responseData.page).toBe(1);
       expect(responseData.limit).toBe(10);
+    });
+
+    it('普通用户不能获取用户列表', async () => {
+      // 创建普通用户上下文
+      const ctx = createMockContext(null, {
+        id: 'user-id',
+        username: 'normaluser',
+        role: UserRole.USER
+      });
+      ctx.query = { page: '1', limit: '10' };
+
+      await expect(UserController.list(ctx))
+        .rejects
+        .toThrow('没有权限访问用户列表');
     });
 
     it('应该根据关键字搜索用户', async () => {
@@ -178,7 +278,7 @@ describe('UserController', () => {
         await UserController.create(createMockContext(user));
       }
 
-      // 按关键字搜索
+      // 管理员按关键字搜索
       const ctx = createMockContext();
       ctx.query = { keyword: '搜索' };
       await UserController.list(ctx);
@@ -190,7 +290,7 @@ describe('UserController', () => {
   });
 
   describe('delete', () => {
-    it('应该成功停用用户（软删除）', async () => {
+    it('管理员应该能成功停用用户（软删除）', async () => {
       // 先创建用户
       const createCtx = createMockContext(mockUser);
       await UserController.create(createCtx);
@@ -202,6 +302,22 @@ describe('UserController', () => {
       await UserController.delete(ctx);
 
       expect((ctx.body as any).data.is_active).toBe(false);
+    });
+
+    it('普通用户不能停用其他用户', async () => {
+      // 先创建一个用户
+      const createCtx = createMockContext(mockUser);
+      await UserController.create(createCtx);
+      const userId = (createCtx.body as any).data.id;
+
+      // 其他用户尝试停用
+      const ctx = createMockContext(null, {
+        id: 'other-user-id',
+        username: 'otheruser',
+        role: UserRole.USER
+      });
+      ctx.params = { id: userId };
+      await expect(UserController.delete(ctx)).rejects.toThrow('没有权限停用用户');
     });
 
     it('当删除不存在的用户时应该抛出错误', async () => {

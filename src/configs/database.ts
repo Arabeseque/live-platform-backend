@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const MONGO_URI = process.env.MONGO_ATLAS_URI || 'mongodb://localhost:27017/live-platform';
+const MONGO_URI = process.env.MONGO_ATLAS_URI;
 
 // 连接选项
 const options = {
