@@ -1,3 +1,5 @@
+import 'reflect-metadata';
+
 import { injectable } from 'tsyringe';
 import VerificationCode, { VerificationCodeType, IVerificationCode } from '../models/verification-code.model.js';
 import { ValidationError } from '../utils/errors.js';

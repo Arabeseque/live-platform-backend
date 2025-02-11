@@ -1,0 +1,125 @@
+openapi: 3.0.0
+info:
+  title: Live Platform API
+  version: 1.0.0
+  description: 直播平台 API 文档
+  contact:
+    name: API Support
+    email: support@example.com
+servers:
+  - url: http://localhost:3000
+    description: 开发环境服务器
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    LoginResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: JWT token
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+            username:
+              type: string
+            nickname:
+              type: string
+            avatar_url:
+              type: string
+            role:
+              type: string
+              enum:
+                - user
+                - streamer
+                - admin
+            last_login_time:
+              type: string
+              format: date-time
+security:
+  - bearerAuth: []
+paths:
+  /api/auth/login:
+    post:
+      tags:
+        - 认证管理
+      summary: 用户名密码登录
+      description: 使用用户名和密码进行登录
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - password
+              properties:
+                username:
+                  type: string
+                  description: 用户名
+                password:
+                  type: string
+                  format: password
+                  description: 密码
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: 参数验证失败
+        '401':
+          description: 密码错误
+        '404':
+          description: 用户不存在
+  /api/auth/verification-code:
+    post:
+      tags:
+        - 认证管理
+      summary: 发送验证码
+      description: 向指定手机号发送验证码
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - phone
+                - type
+              properties:
+                phone:
+                  type: string
+                  description: 手机号
+                type:
+                  type: string
+                  enum:
+                    - LOGIN
+                    - REGISTER
+                    - RESET_PASSWORD
+                  description: 验证码类型
+      responses:
+        '200':
+          description: 验证码发送成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  expires_in:
+                    type: number
+                    description: 验证码有效期（秒）
+        '400':
+          description: 参数验证失败
+tags:
+  - name: 认证管理
+    description: 用户认证相关接口

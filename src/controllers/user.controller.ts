@@ -10,7 +10,59 @@ import { ValidationError, NotFoundError, ConflictError, AuthorizationError } fro
  */
 export class UserController {
   /**
-   * 创建用户
+   * @swagger
+   * /api/users:
+   *   post:
+   *     tags:
+   *       - 用户管理
+   *     summary: 创建用户
+   *     description: 创建新用户账号
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - username
+   *               - password
+   *               - nickname
+   *               - phone
+   *             properties:
+   *               username:
+   *                 type: string
+   *                 description: 用户名
+   *                 minLength: 3
+   *                 maxLength: 30
+   *               password:
+   *                 type: string
+   *                 description: 密码
+   *                 format: password
+   *               nickname:
+   *                 type: string
+   *                 description: 昵称
+   *                 maxLength: 30
+   *               phone:
+   *                 type: string
+   *                 description: 手机号
+   *               avatar_url:
+   *                 type: string
+   *                 description: 头像URL
+   *               role:
+   *                 type: string
+   *                 enum: [user, streamer, admin]
+   *                 description: 用户角色
+   *     responses:
+   *       201:
+   *         description: 用户创建成功
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/UserResponse'
+   *       400:
+   *         description: 参数验证失败
+   *       409:
+   *         description: 用户名或手机号已存在
    */
   static async create(ctx: Context) {
     const userData: CreateUserDTO = ctx.request.body as CreateUserDTO;
@@ -42,7 +94,35 @@ export class UserController {
   }
 
   /**
-   * 获取用户详情
+   * @swagger
+   * /api/users/{id}:
+   *   get:
+   *     tags:
+   *       - 用户管理
+   *     summary: 获取用户详情
+   *     description: 获取指定用户的详细信息（需要管理员权限或本人）
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: 用户ID
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: 获取成功
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/UserResponse'
+   *       401:
+   *         description: 未认证
+   *       403:
+   *         description: 没有权限
+   *       404:
+   *         description: 用户不存在
    */
   static async getById(ctx: Context) {
     const { id } = ctx.params;
@@ -64,7 +144,63 @@ export class UserController {
   }
 
   /**
-   * 更新用户
+   * @swagger
+   * /api/users/{id}:
+   *   put:
+   *     tags:
+   *       - 用户管理
+   *     summary: 更新用户信息
+   *     description: 更新指定用户的信息（需要管理员权限或本人）
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: 用户ID
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             properties:
+   *               nickname:
+   *                 type: string
+   *                 description: 昵称
+   *               avatar_url:
+   *                 type: string
+   *                 description: 头像URL
+   *               phone:
+   *                 type: string
+   *                 description: 手机号
+   *               password:
+   *                 type: string
+   *                 description: 新密码
+   *               role:
+   *                 type: string
+   *                 enum: [user, streamer, admin]
+   *                 description: 用户角色
+   *               is_active:
+   *                 type: boolean
+   *                 description: 是否激活
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: 更新成功
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/UserResponse'
+   *       401:
+   *         description: 未认证
+   *       403:
+   *         description: 没有权限
+   *       404:
+   *         description: 用户不存在
+   *       409:
+   *         description: 手机号已被使用
    */
   static async update(ctx: Context) {
     const { id } = ctx.params;
@@ -112,7 +248,72 @@ export class UserController {
   }
 
   /**
-   * 获取用户列表
+   * @swagger
+   * /api/users:
+   *   get:
+   *     tags:
+   *       - 用户管理
+   *     summary: 获取用户列表
+   *     description: 获取用户列表（需要管理员权限）
+   *     parameters:
+   *       - in: query
+   *         name: keyword
+   *         schema:
+   *           type: string
+   *         description: 搜索关键词（用户名或昵称）
+   *       - in: query
+   *         name: role
+   *         schema:
+   *           type: string
+   *           enum: [user, streamer, admin]
+   *         description: 用户角色
+   *       - in: query
+   *         name: is_active
+   *         schema:
+   *           type: boolean
+   *         description: 是否激活
+   *       - in: query
+   *         name: page
+   *         schema:
+   *           type: integer
+   *           minimum: 1
+   *           default: 1
+   *         description: 页码
+   *       - in: query
+   *         name: limit
+   *         schema:
+   *           type: integer
+   *           minimum: 1
+   *           maximum: 100
+   *           default: 10
+   *         description: 每页数量
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: 获取成功
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 list:
+   *                   type: array
+   *                   items:
+   *                     $ref: '#/components/schemas/UserResponse'
+   *                 total:
+   *                   type: integer
+   *                   description: 总记录数
+   *                 page:
+   *                   type: integer
+   *                   description: 当前页码
+   *                 limit:
+   *                   type: integer
+   *                   description: 每页数量
+   *       401:
+   *         description: 未认证
+   *       403:
+   *         description: 没有权限
    */
   static async list(ctx: Context) {
     // 验证权限：只有管理员可以获取用户列表
@@ -163,7 +364,35 @@ export class UserController {
   }
 
   /**
-   * 删除用户（软删除）
+   * @swagger
+   * /api/users/{id}:
+   *   delete:
+   *     tags:
+   *       - 用户管理
+   *     summary: 停用用户
+   *     description: 停用指定用户（软删除，需要管理员权限）
+   *     parameters:
+   *       - in: path
+   *         name: id
+   *         required: true
+   *         schema:
+   *           type: string
+   *         description: 用户ID
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: 停用成功
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/UserResponse'
+   *       401:
+   *         description: 未认证
+   *       403:
+   *         description: 没有权限
+   *       404:
+   *         description: 用户不存在
    */
   static async delete(ctx: Context) {
     const { id } = ctx.params;

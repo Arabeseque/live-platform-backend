@@ -1,6 +1,9 @@
+import 'reflect-metadata';
+
+
 import { Context } from 'koa';
 import bcrypt from 'bcrypt';
-import { sign, SignOptions } from 'jsonwebtoken';
+import jwt from 'jsonwebtoken';
 import { container } from 'tsyringe';
 import User from '../models/user.model.js';
 import { success } from '../utils/response.js';
@@ -10,34 +13,96 @@ import { VerificationCodeType } from '../models/verification-code.model.js';
 
 /**
  * 认证控制器
+ * @swagger
+ * tags:
+ *   name: 认证管理
+ *   description: 用户认证相关接口
+ * 
+ * components:
+ *   schemas:
+ *     LoginResponse:
+ *       type: object
+ *       properties:
+ *         token:
+ *           type: string
+ *           description: JWT token
+ *         user:
+ *           type: object
+ *           properties:
+ *             id:
+ *               type: string
+ *             username:
+ *               type: string
+ *             nickname:
+ *               type: string
+ *             avatar_url:
+ *               type: string
+ *             role:
+ *               type: string
+ *               enum: [user, streamer, admin]
+ *             last_login_time:
+ *               type: string
+ *               format: date-time
  */
 export class AuthController {
   private static verificationCodeService = container.resolve(VerificationCodeService);
   private static SALT_ROUNDS = 10;
 
   /**
-   * 用户名密码登录
+   * @swagger
+   * /api/auth/login:
+   *   post:
+   *     tags:
+   *       - 认证管理
+   *     summary: 用户名密码登录
+   *     description: 使用用户名和密码进行登录
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - username
+   *               - password
+   *             properties:
+   *               username:
+   *                 type: string
+   *                 description: 用户名
+   *               password:
+   *                 type: string
+   *                 format: password
+   *                 description: 密码
+   *     responses:
+   *       200:
+   *         description: 登录成功
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/LoginResponse'
+   *       400:
+   *         description: 参数验证失败
+   *       401:
+   *         description: 密码错误
+   *       404:
+   *         description: 用户不存在
    */
   static async login(ctx: Context) {
     const { username, password } = ctx.request.body as { username: string; password: string };
 
-    // 参数验证
     if (!username || !password) {
       throw new ValidationError('用户名和密码不能为空');
     }
 
-    // 查找用户
     const user = await User.findOne({ username });
     if (!user) {
       throw new NotFoundError('用户不存在');
     }
 
-    // 验证用户状态
     if (!user.is_active) {
       throw new AuthenticationError('账号已被禁用');
     }
 
-    // 验证密码
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
     if (!isValidPassword) {
       throw new AuthenticationError('密码错误');
@@ -47,7 +112,43 @@ export class AuthController {
   }
 
   /**
-   * 发送验证码
+   * @swagger
+   * /api/auth/verification-code:
+   *   post:
+   *     tags:
+   *       - 认证管理
+   *     summary: 发送验证码
+   *     description: 向指定手机号发送验证码
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - phone
+   *               - type
+   *             properties:
+   *               phone:
+   *                 type: string
+   *                 description: 手机号
+   *               type:
+   *                 type: string
+   *                 enum: [LOGIN, REGISTER, RESET_PASSWORD]
+   *                 description: 验证码类型
+   *     responses:
+   *       200:
+   *         description: 验证码发送成功
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 expires_in:
+   *                   type: number
+   *                   description: 验证码有效期（秒）
+   *       400:
+   *         description: 参数验证失败
    */
   static async sendVerificationCode(ctx: Context) {
     const { phone, type } = ctx.request.body as { phone: string; type: VerificationCodeType };
@@ -68,7 +169,40 @@ export class AuthController {
   }
 
   /**
-   * 验证码登录
+   * @swagger
+   * /api/auth/login/code:
+   *   post:
+   *     tags:
+   *       - 认证管理
+   *     summary: 验证码登录
+   *     description: 使用手机号和验证码进行登录，如果用户不存在则自动注册
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - phone
+   *               - code
+   *             properties:
+   *               phone:
+   *                 type: string
+   *                 description: 手机号
+   *               code:
+   *                 type: string
+   *                 description: 验证码
+   *     responses:
+   *       200:
+   *         description: 登录成功
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/LoginResponse'
+   *       400:
+   *         description: 参数验证失败
+   *       401:
+   *         description: 验证码验证失败
    */
   static async loginWithCode(ctx: Context) {
     const { phone, code } = ctx.request.body as { phone: string; code: string };
@@ -77,7 +211,6 @@ export class AuthController {
       throw new ValidationError('手机号和验证码不能为空');
     }
 
-    // 验证验证码
     const isValid = await AuthController.verificationCodeService.verifyCode(
       phone,
       code,
@@ -88,12 +221,10 @@ export class AuthController {
       throw new AuthenticationError('验证码验证失败');
     }
 
-    // 查找或创建用户
     let user = await User.findOne({ phone });
     if (!user) {
-      // 如果用户不存在，创建新用户
-      const username = `user_${Date.now()}`; // 生成临时用户名
-      const randomPassword = Math.random().toString(36).slice(-8); // 生成随机密码
+      const username = `user_${Date.now()}`;
+      const randomPassword = Math.random().toString(36).slice(-8);
       
       user = await User.create({
         username,
@@ -108,7 +239,48 @@ export class AuthController {
   }
 
   /**
-   * 使用验证码注册
+   * @swagger
+   * /api/auth/register:
+   *   post:
+   *     tags:
+   *       - 认证管理
+   *     summary: 用户注册
+   *     description: 使用手机号、验证码和密码注册新用户
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - phone
+   *               - code
+   *               - password
+   *             properties:
+   *               phone:
+   *                 type: string
+   *                 description: 手机号
+   *               code:
+   *                 type: string
+   *                 description: 验证码
+   *               password:
+   *                 type: string
+   *                 format: password
+   *                 description: 密码（必须包含大小写字母和数字，且长度至少为8位）
+   *               username:
+   *                 type: string
+   *                 description: 用户名（可选）
+   *     responses:
+   *       200:
+   *         description: 注册成功
+   *         content:
+   *           application/json:
+   *             schema:
+   *               $ref: '#/components/schemas/LoginResponse'
+   *       400:
+   *         description: 参数验证失败
+   *       401:
+   *         description: 验证码验证失败
    */
   static async register(ctx: Context) {
     const { phone, code, password, username } = ctx.request.body as {
@@ -118,17 +290,14 @@ export class AuthController {
       username?: string;
     };
 
-    // 参数验证
     if (!phone || !code || !password) {
       throw new ValidationError('手机号、验证码和密码不能为空');
     }
 
-    // 密码强度验证
     if (!AuthController.isValidPassword(password)) {
       throw new ValidationError('密码必须包含大小写字母和数字，且长度至少为8位');
     }
 
-    // 验证验证码
     const isValid = await AuthController.verificationCodeService.verifyCode(
       phone,
       code,
@@ -139,13 +308,11 @@ export class AuthController {
       throw new AuthenticationError('验证码验证失败');
     }
 
-    // 检查手机号是否已注册
     const existingUser = await User.findOne({ phone });
     if (existingUser) {
       throw new ValidationError('该手机号已被注册');
     }
 
-    // 检查用户名是否已存在
     if (username) {
       const existingUsername = await User.findOne({ username });
       if (existingUsername) {
@@ -153,7 +320,6 @@ export class AuthController {
       }
     }
 
-    // 创建用户
     const newUser = await User.create({
       username: username || `user_${Date.now()}`,
       nickname: username || `user_${Date.now()}`,
@@ -166,7 +332,41 @@ export class AuthController {
   }
 
   /**
-   * 获取当前登录用户信息
+   * @swagger
+   * /api/auth/current:
+   *   get:
+   *     tags:
+   *       - 认证管理
+   *     summary: 获取当前用户信息
+   *     description: 获取当前登录用户的详细信息
+   *     security:
+   *       - bearerAuth: []
+   *     responses:
+   *       200:
+   *         description: 获取成功
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 id:
+   *                   type: string
+   *                 username:
+   *                   type: string
+   *                 nickname:
+   *                   type: string
+   *                 avatar_url:
+   *                   type: string
+   *                 role:
+   *                   type: string
+   *                   enum: [user, streamer, admin]
+   *                 last_login_time:
+   *                   type: string
+   *                   format: date-time
+   *       401:
+   *         description: 未认证
+   *       404:
+   *         description: 用户不存在
    */
   static async getCurrentUser(ctx: Context) {
     const user = await User.findById(ctx.state.user.id);
@@ -188,25 +388,22 @@ export class AuthController {
    * 处理成功登录
    */
   private static async handleSuccessLogin(ctx: Context, user: any) {
-    // 生成JWT token
     const jwtPayload = {
       id: user.id,
       username: user.username,
       role: user.role
     };
 
-    const jwtOptions: SignOptions = {
+    const jwtOptions = {
       expiresIn: Number(process.env.JWT_EXPIRES_IN)
     };
 
-    // 更新最后登录信息
     user.last_login_time = new Date();
     user.last_login_ip = ctx.ip;
     await user.save();
 
-    // 返回token和用户信息
     ctx.body = success({
-      token: sign(jwtPayload, process.env.JWT_SECRET, jwtOptions),
+      token: jwt.sign(jwtPayload, process.env.JWT_SECRET, jwtOptions),
       user: {
         id: user.id,
         username: user.username,
@@ -222,7 +419,6 @@ export class AuthController {
    * 验证密码强度
    */
   private static isValidPassword(password: string): boolean {
-    // 密码必须包含大小写字母和数字，且长度至少为8位
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
     return passwordRegex.test(password);
   }

@@ -1,65 +1,39 @@
 import { Context, Next } from 'koa';
-import { verify } from 'jsonwebtoken';
-import { AuthenticationError, AuthorizationError } from '../utils/errors.js';
+import jwt from 'jsonwebtoken';
+import { AuthenticationError } from '../utils/errors.js';
+import { UserRole } from '../models/user.model.js';
 
 /**
- * JWT负载接口
+ * 认证中间件工厂函数，支持角色验证
+ * @param allowedRoles 允许访问的角色列表
  */
-interface JwtPayload {
-  id: string;
-  username: string;
-  role: string;
-}
-
-/**
- * 验证JWT Token
- */
-export function authMiddleware(allowedRoles?: string[]) {
+export const authMiddleware = (allowedRoles?: UserRole[]) => {
   return async (ctx: Context, next: Next) => {
-    // 获取token
     const authHeader = ctx.headers.authorization;
-    if (!authHeader) {
-      throw new AuthenticationError('未提供认证令牌');
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new AuthenticationError('未提供有效的认证令牌');
     }
 
-    // 验证token格式
-    const parts = authHeader.split(' ');
-    if (parts.length !== 2 || parts[0] !== 'Bearer') {
-      throw new AuthenticationError('认证令牌格式错误');
-    }
-
-    const token = parts[1];
+    const token = authHeader.substring(7); // 去掉 "Bearer " 前缀
 
     try {
-      // 验证token
-      const decoded = verify(token, process.env.JWT_SECRET || 'fallback-secret-key') as JwtPayload;
-
-      // 将用户信息存储在上下文中
-      ctx.state.user = {
-        id: decoded.id,
-        username: decoded.username,
-        role: decoded.role
-      };
-
-      // 验证角色权限
+      const decoded = jwt.verify(token, process.env.JWT_SECRET) as { id: string; username: string; role: UserRole };
+      
+      // 如果指定了允许的角色，则验证用户角色
       if (allowedRoles && allowedRoles.length > 0) {
         if (!allowedRoles.includes(decoded.role)) {
-          throw new AuthorizationError('没有操作权限');
+          throw new AuthenticationError('没有访问权限');
         }
       }
 
+      ctx.state.user = decoded;
       await next();
     } catch (error) {
-      if (error instanceof Error) {
-        // 处理不同类型的JWT错误
-        if (error.name === 'TokenExpiredError') {
-          throw new AuthenticationError('认证令牌已过期');
-        }
-        if (error.name === 'JsonWebTokenError') {
-          throw new AuthenticationError('无效的认证令牌');
-        }
+      if (error instanceof jwt.JsonWebTokenError) {
+        throw new AuthenticationError('无效的认证令牌');
       }
       throw error;
     }
   };
-}
+};

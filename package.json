@@ -25,13 +25,16 @@
   "dependencies": {
     "@koa/cors": "^5.0.0",
     "@koa/router": "^13.1.0",
+    "@types/swagger-jsdoc": "^6.0.4",
     "dotenv": "^16.4.7",
     "jsonwebtoken": "^9.0.2",
     "koa": "^2.15.3",
     "koa-bodyparser": "^4.4.1",
+    "koa2-swagger-ui": "^5.11.0",
     "mongodb": "^6.13.0",
     "mongoose": "^8.10.0",
     "reflect-metadata": "^0.2.2",
+    "swagger-jsdoc": "^6.2.8",
     "tsyringe": "^4.8.0"
   },
   "devDependencies": {
@@ -39,6 +42,7 @@
     "@types/jsonwebtoken": "^9.0.8",
     "@types/koa": "^2.15.0",
     "@types/koa-bodyparser": "^4.3.12",
+    "@types/koa-router": "^7.4.8",
     "@types/koa__cors": "^5.0.0",
     "@types/koa__router": "^12.0.4",
     "@types/mongodb": "^4.0.7",
