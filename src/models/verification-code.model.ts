@@ -15,6 +15,7 @@ export interface IVerificationCode extends Document {
   expires_at: Date;
   is_used: boolean;
   created_at: Date;
+  verify_attempts: number;
 }
 
 // 验证码Schema定义
@@ -43,6 +44,11 @@ const VerificationCodeSchema = new Schema<IVerificationCode>({
   is_used: {
     type: Boolean,
     default: false
+  },
+  verify_attempts: {
+    type: Number,
+    default: 0,
+    min: 0
   }
 }, {
   timestamps: {

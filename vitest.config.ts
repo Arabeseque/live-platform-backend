@@ -1,12 +1,13 @@
 import { defineConfig } from 'vitest/config';
+import * as dotenv from 'dotenv';
+import { resolve } from 'path';
 
 export default defineConfig({
   test: {
+    setupFiles: ['tests/setup.ts'],
     globals: true,
     environment: 'node',
     include: ['tests/**/*.test.ts'],
-    
-    setupFiles: ['tests/setup/env.ts', 'tests/setup/database.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

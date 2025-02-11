@@ -30,7 +30,9 @@
     "koa": "^2.15.3",
     "koa-bodyparser": "^4.4.1",
     "mongodb": "^6.13.0",
-    "mongoose": "^8.10.0"
+    "mongoose": "^8.10.0",
+    "reflect-metadata": "^0.2.2",
+    "tsyringe": "^4.8.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
