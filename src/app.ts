@@ -10,10 +10,17 @@ import { errorHandler } from './middlewares/error-handler.middleware.js';
 import { responseHandler } from './middlewares/response-handler.middleware.js';
 import userRoutes from './routes/user.routes.js';
 import authRoutes from './routes/auth.routes.js';
+import webrtcRoutes from './routes/webrtc.routes';
+import { WebRTCSignalingService } from './services/webrtc-signaling.service';
 import { swaggerSpec } from './configs/swagger.js';
+import { createServer } from 'http';
 
 // 创建 Koa 实例
 const app = new Koa();
+
+// 创建 HTTP 服务器实例
+// NOTE: app.callback() 方法的作用是将 Koa 实例转换为一个标准的 Node.js HTTP 请求监听器。换句话说，app.callback() 返回一个函数，这个函数可以作为 http.createServer() 的参数，用于处理每个 HTTP 请求。
+const server = createServer(app.callback());
 
 // 连接数据库
 connectDatabase()
@@ -71,6 +78,8 @@ app.use(userRoutes.routes());
 app.use(userRoutes.allowedMethods());
 app.use(authRoutes.routes());
 app.use(authRoutes.allowedMethods());
+app.use(webrtcRoutes.routes());
+app.use(webrtcRoutes.allowedMethods());
 
 // 未匹配路由处理
 app.use(async (ctx: Context) => {
@@ -81,10 +90,13 @@ app.use(async (ctx: Context) => {
   };
 });
 
+// 初始化WebSocket信令服务
+new WebRTCSignalingService(server);
+
 // 监听错误事件
 app.on('error', (err: Error, ctx: Context) => {
   console.error('服务器错误:', err);
 });
 
-// 导出 app 实例供测试使用
-export default app;
+// 导出 HTTP 服务器实例供启动使用
+export default server;

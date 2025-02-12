@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js",
+    "start": "tsx watch src/server.ts",
     "test": "vitest run",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
@@ -26,6 +26,7 @@
     "@koa/cors": "^5.0.0",
     "@koa/router": "^13.1.0",
     "@types/swagger-jsdoc": "^6.0.4",
+    "@types/ws": "^8.5.14",
     "dotenv": "^16.4.7",
     "jsonwebtoken": "^9.0.2",
     "koa": "^2.15.3",
@@ -35,7 +36,8 @@
     "mongoose": "^8.10.0",
     "reflect-metadata": "^0.2.2",
     "swagger-jsdoc": "^6.2.8",
-    "tsyringe": "^4.8.0"
+    "tsyringe": "^4.8.0",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",
