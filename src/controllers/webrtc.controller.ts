@@ -6,8 +6,45 @@ interface UpdateStreamStatusBody {
     status: 'live' | 'finished';
 }
 
+interface CreateRoomBody {
+    title: string;
+}
+
 @injectable()
 export class WebRTCController {
+    /**
+     * 创建直播间
+     */
+    async createRoom(ctx: Context) {
+        try {
+            const { title } = ctx.request.body as CreateRoomBody;
+            const userId = ctx.state.user._id; // 从JWT中获取用户ID
+
+            // 生成唯一的streamKey
+            const streamKey = `stream-${Math.random().toString(36).substr(2, 9)}`;
+
+            const room = new LiveRoom({
+                title,
+                user_id: userId,
+                stream_key: streamKey,
+                status: LiveRoomStatus.PENDING
+            });
+
+            await room.save();
+
+            ctx.body = {
+                success: true,
+                data: room
+            };
+        } catch (error: any) {
+            ctx.status = 500;
+            ctx.body = {
+                success: false,
+                message: error.message
+            };
+        }
+    }
+
     /**
      * 获取直播间WebRTC配置
      */

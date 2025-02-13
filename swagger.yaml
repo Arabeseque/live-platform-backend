@@ -75,6 +75,32 @@ components:
           type: string
           format: date-time
           description: 结束直播时间
+    CreateRoomResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 直播间ID
+        title:
+          type: string
+          description: 直播间标题
+        stream_key:
+          type: string
+          description: 推流密钥
+        status:
+          type: string
+          enum:
+            - pending
+            - live
+            - finished
+          description: 直播状态
+        user_id:
+          type: string
+          description: 创建者ID
+        created_at:
+          type: string
+          format: date-time
+          description: 创建时间
 security:
   - bearerAuth: []
 paths:
@@ -114,12 +140,14 @@ paths:
           description: 密码错误
         '404':
           description: 用户不存在
-  /api/auth/verification-code:
+  /api/rooms:
     post:
       tags:
-        - 认证管理
-      summary: 发送验证码
-      description: 向指定手机号发送验证码
+        - WebRTC直播
+      summary: 创建直播间
+      description: 创建一个新的直播间
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -127,30 +155,20 @@ paths:
             schema:
               type: object
               required:
-                - phone
-                - type
+                - title
               properties:
-                phone:
+                title:
                   type: string
-                  description: 手机号
-                type:
-                  type: string
-                  enum:
-                    - LOGIN
-                    - REGISTER
-                    - RESET_PASSWORD
-                  description: 验证码类型
+                  description: 直播间标题
       responses:
         '200':
-          description: 验证码发送成功
+          description: 创建成功
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  expires_in:
-                    type: number
-                    description: 验证码有效期（秒）
+                $ref: '#/components/schemas/CreateRoomResponse'
+        '401':
+          description: 未授权
         '400':
           description: 参数验证失败
   /api/rooms/{roomId}/rtc-config:
@@ -159,6 +177,8 @@ paths:
         - WebRTC直播
       summary: 获取直播间WebRTC配置
       description: 获取直播间的WebRTC推流地址和信令服务器地址
+      security:
+        - bearerAuth: []
       parameters:
         - name: roomId
           in: path
@@ -175,6 +195,8 @@ paths:
                 $ref: '#/components/schemas/WebRTCConfig'
         '404':
           description: 直播间不存在
+        '401':
+          description: 未授权
   /api/rooms/{roomId}/stream-status:
     get:
       tags:
@@ -202,6 +224,8 @@ paths:
         - WebRTC直播
       summary: 更新直播流状态
       description: 更新指定直播间的直播状态
+      security:
+        - bearerAuth: []
       parameters:
         - name: roomId
           in: path
@@ -233,6 +257,8 @@ paths:
                 $ref: '#/components/schemas/StreamStatus'
         '404':
           description: 直播间不存在
+        '401':
+          description: 未授权
 tags:
   - name: 认证管理
     description: 用户认证相关接口
