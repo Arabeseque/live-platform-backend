@@ -42,6 +42,7 @@ export const swaggerSpec = swaggerJSDoc(options);
 export const swaggerUiOptions = {
   routePrefix: '/swagger',
   swaggerOptions: {
-    url: '/swagger-json'
+    url: '/swagger-json',
+    spec: swaggerSpec
   }
 };

@@ -27,6 +27,7 @@
     "@koa/router": "^13.1.0",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/ws": "^8.5.14",
+    "@types/yamljs": "^0.2.34",
     "dotenv": "^16.4.7",
     "jsonwebtoken": "^9.0.2",
     "koa": "^2.15.3",
@@ -37,7 +38,8 @@
     "reflect-metadata": "^0.2.2",
     "swagger-jsdoc": "^6.2.8",
     "tsyringe": "^4.8.0",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "yamljs": "^0.3.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^5.0.2",

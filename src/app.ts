@@ -12,7 +12,9 @@ import userRoutes from './routes/user.routes.js';
 import authRoutes from './routes/auth.routes.js';
 import webrtcRoutes from './routes/webrtc.routes';
 import { WebRTCSignalingService } from './services/webrtc-signaling.service';
-import { swaggerSpec } from './configs/swagger.js';
+// import { swaggerSpec } from './configs/swagger.js';
+import YAML from 'yamljs'; // 引入 yamljs 库
+const swaggerSpec = YAML.load('./swagger.yaml'); // 读取 swagger.yaml 文件 
 import { createServer } from 'http';
 
 // 创建 Koa 实例

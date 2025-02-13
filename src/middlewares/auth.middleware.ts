@@ -17,6 +17,7 @@ export const authMiddleware = (allowedRoles?: UserRole[]) => {
 
     const token = authHeader.substring(7); // 去掉 "Bearer " 前缀
 
+    console.log('token:', token);
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET) as { id: string; username: string; role: UserRole };
       

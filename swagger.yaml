@@ -42,6 +42,39 @@ components:
             last_login_time:
               type: string
               format: date-time
+    WebRTCConfig:
+      type: object
+      properties:
+        roomId:
+          type: string
+          description: 直播间ID
+        streamKey:
+          type: string
+          description: 推流密钥
+        webrtcUrl:
+          type: string
+          description: WebRTC推流地址
+        wsUrl:
+          type: string
+          description: WebSocket信令服务器地址
+    StreamStatus:
+      type: object
+      properties:
+        status:
+          type: string
+          enum:
+            - preparing
+            - live
+            - finished
+          description: 直播状态
+        startTime:
+          type: string
+          format: date-time
+          description: 开始直播时间
+        endTime:
+          type: string
+          format: date-time
+          description: 结束直播时间
 security:
   - bearerAuth: []
 paths:
@@ -120,6 +153,88 @@ paths:
                     description: 验证码有效期（秒）
         '400':
           description: 参数验证失败
+  /api/rooms/{roomId}/rtc-config:
+    get:
+      tags:
+        - WebRTC直播
+      summary: 获取直播间WebRTC配置
+      description: 获取直播间的WebRTC推流地址和信令服务器地址
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 直播间ID
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebRTCConfig'
+        '404':
+          description: 直播间不存在
+  /api/rooms/{roomId}/stream-status:
+    get:
+      tags:
+        - WebRTC直播
+      summary: 获取直播流状态
+      description: 获取指定直播间的直播状态
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 直播间ID
+      responses:
+        '200':
+          description: 获取成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreamStatus'
+        '404':
+          description: 直播间不存在
+    post:
+      tags:
+        - WebRTC直播
+      summary: 更新直播流状态
+      description: 更新指定直播间的直播状态
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 直播间ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum:
+                    - live
+                    - finished
+                  description: 直播状态
+      responses:
+        '200':
+          description: 更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreamStatus'
+        '404':
+          description: 直播间不存在
 tags:
   - name: 认证管理
     description: 用户认证相关接口
+  - name: WebRTC直播
+    description: WebRTC直播相关接口

@@ -30,5 +30,6 @@ services:
       - ./package-lock.json:/app/package-lock.json
       - ./tsconfig.json:/app/tsconfig.json
       - ./.env:/app/.env
+      - ./swagger.yaml:/app/swagger.yaml
 
     restart: always
