@@ -22,6 +22,7 @@ export class WebRTCSignalingService {
       ws.on('message', async (message: string) => {
         try {
           const data: SignalingMessage = JSON.parse(message);
+          console.log('收到消息:', data);
           await this.handleMessage(ws, data);
         } catch (err) {
           console.error('消息处理错误:', err);
@@ -46,6 +47,7 @@ export class WebRTCSignalingService {
 
     switch (type) {
       case 'join':
+        console.log('加入房间:', roomId);
         await this.handleJoin(ws, roomId);
         break;
       case 'leave':

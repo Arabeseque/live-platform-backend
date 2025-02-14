@@ -85,6 +85,7 @@ app.use(webrtcRoutes.allowedMethods());
 
 // 未匹配路由处理
 app.use(async (ctx: Context) => {
+  console.log('未匹配路由:', ctx.url);
   ctx.status = 404;
   ctx.body = {
     code: 404,

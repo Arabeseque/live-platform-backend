@@ -220,7 +220,6 @@ export class AuthController {
    *         description: 用户不存在
    */
   static async getCurrentUser(ctx: Context) {
-    console.log("测试", ctx.state.user);
     const user = await User.findById(ctx.state.user.id);
     if (!user) {
       throw new NotFoundError('用户不存在');

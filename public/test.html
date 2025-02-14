@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebRTC推流测试</title>
+    <style>
+        #videoPreview {
+            width: 640px;
+            height: 480px;
+            background: #000;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        .status {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>WebRTC推流测试</h1>
+    
+    <video id="videoPreview" autoplay playsinline muted></video>
+    
+    <div class="controls">
+        <button id="startCamera">启动摄像头</button>
+        <button id="startStream">开始推流</button>
+        <button id="stopStream">停止推流</button>
+    </div>
+
+    <div class="status" id="status">状态: 未连接</div>
+
+    <script>
+        let pc;
+        let stream;
+        const status = document.getElementById('status');
+        const videoPreview = document.getElementById('videoPreview');
+
+        // 启动摄像头
+        document.getElementById('startCamera').onclick = async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: true, 
+                    audio: true 
+                });
+                videoPreview.srcObject = stream;
+                status.textContent = '状态: 摄像头已启动';
+            } catch (e) {
+                console.error('获取摄像头失败:', e);
+                status.textContent = '状态: 获取摄像头失败';
+            }
+        };
+
+        // 开始推流
+        document.getElementById('startStream').onclick = async () => {
+            if (!stream) {
+                status.textContent = '状态: 请先启动摄像头';
+                return;
+            }
+
+            try {
+                // 创建WebRTC连接
+                pc = new RTCPeerConnection({
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' }
+                    ]
+                });
+
+                // 添加媒体轨道
+                stream.getTracks().forEach(track => {
+                    pc.addTrack(track, stream);
+                });
+
+                // 创建offer
+                const offer = await pc.createOffer({
+                    offerToReceiveAudio: false,
+                    offerToReceiveVideo: false
+                });
+
+                // 设置本地描述
+                await pc.setLocalDescription(offer);
+
+                // 连接WebSocket
+                const ws = new WebSocket('ws://localhost:8088/rtc');
+                
+                ws.onopen = () => {
+                    // 发送offer
+                    ws.send(JSON.stringify({
+                        type: 'offer',
+                        payload: offer,
+                        roomId: 'test-room'
+                    }));
+                    status.textContent = '状态: WebSocket已连接';
+                };
+
+                ws.onmessage = async (event) => {
+                    const msg = JSON.parse(event.data);
+                    if (msg.type === 'answer') {
+                        await pc.setRemoteDescription(new RTCSessionDescription(msg.payload));
+                        status.textContent = '状态: 推流中';
+                    } else if (msg.type === 'candidate') {
+                        await pc.addIceCandidate(new RTCIceCandidate(msg.payload));
+                    }
+                };
+
+                ws.onerror = (error) => {
+                    console.error('WebSocket错误:', error);
+                    status.textContent = '状态: WebSocket连接错误';
+                };
+
+                // 处理ICE候选
+                pc.onicecandidate = ({ candidate }) => {
+                    if (candidate && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({
+                            type: 'candidate',
+                            payload: candidate,
+                            roomId: 'test-room'
+                        }));
+                    }
+                };
+
+            } catch (e) {
+                console.error('推流失败:', e);
+                status.textContent = '状态: 推流失败';
+            }
+        };
+
+        // 停止推流
+        document.getElementById('stopStream').onclick = () => {
+            if (pc) {
+                pc.close();
+                pc = null;
+            }
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+                videoPreview.srcObject = null;
+            }
+            status.textContent = '状态: 已停止';
+        };
+    </script>
+</body>
+</html>

@@ -7,7 +7,7 @@ dotenv.config();
 const NODE_ENV = process.env.MONGO_ATLAS_URI;
 console.log(`当前环境: ${NODE_ENV}`);
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8088;
 
 // 启动服务器
 server.listen(PORT, () => {

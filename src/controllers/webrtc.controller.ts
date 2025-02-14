@@ -16,6 +16,7 @@ export class WebRTCController {
      * 创建直播间
      */
     async createRoom(ctx: Context) {
+        console.log('createRoom');
         try {
             const { title } = ctx.request.body as CreateRoomBody;
             const userId = ctx.state.user._id; // 从JWT中获取用户ID
