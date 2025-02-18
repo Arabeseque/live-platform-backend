@@ -144,7 +144,7 @@ export class AuthController {
    *             schema:
    *               $ref: '#/components/schemas/LoginResponse'
    *       400:
-   *         description: 参数验证失败
+   *         descriptio参数验证失败n: 
    */
   static async register(ctx: Context) {
     const { username, password, phone } = ctx.request.body as {
@@ -179,6 +179,7 @@ export class AuthController {
       is_active: true
     });
 
+    console.log(newUser);
     await AuthController.handleSuccessLogin(ctx, newUser);
   }
 

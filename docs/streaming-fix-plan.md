@@ -1,125 +1,101 @@
-# 直播间连接问题修复方案
+# 直播系统修复方案
 
-## 问题描述
+## 一、问题描述
 
-当以主播模式访问直播页面时（无 roomId 参数），系统传递了一个空字符串作为 roomId，导致以下错误：
-```
-CastError: Cast to ObjectId failed for value "" (type string) at path "_id" for model "LiveRoom"
-```
+当前在页面 http://localhost:3333/stream?id=67aee006c491e8b3f3f73cd4 点击开始直播时，SRS 没有显示有内容在直播。需要实现 OBS 推流功能。
 
-## 原因分析
+## 二、解决方案
 
-1. 当前逻辑在主播模式下：
-```typescript
-const isStreamer = computed(() => !route.query.id)
-const roomId = ref(route.query.id?.toString() || '')
-```
+### 1. SRS 配置优化
 
-2. 这导致：
-- 主播模式下 roomId 为空字符串
-- 空字符串无法被转换为 MongoDB 的 ObjectId
-- WebSocket 信令服务器尝试查找房间时失败
+需要修改 docker/srs/srs.conf 配置，主要调整：
 
-## 修复方案
-
-### 1. 修改直播页面逻辑
-
-在 `stream.vue` 中：
-
-```typescript
-// 1. 添加创建房间的函数
-async function createRoom() {
-  try {
-    const response = await fetch('/api/rooms', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        title: '我的直播间',
-        streamerId: userId.value
-      })
-    });
-    const data = await response.json();
-    return data.roomId;
-  } catch (error) {
-    console.error('创建房间失败:', error);
-    throw error;
-  }
-}
-
-// 2. 修改 roomId 的处理逻辑
-const roomId = ref('');
-
-onMounted(async () => {
-  if (isStreamer.value) {
-    // 主播模式：创建新房间
-    try {
-      roomId.value = await createRoom();
-    } catch (err) {
-      error.value = '创建直播间失败';
+```nginx
+rtc_server {
+    enabled         on;
+    listen          8000;
+    candidate {
+        # 使用通配符监听所有网卡
+        internal            {
+            address         0.0.0.0;
+            port           8000;
+        }
     }
-  } else {
-    // 观众模式：使用URL参数的房间ID
-    roomId.value = route.query.id?.toString() || '';
-  }
-});
-```
+}
 
-### 2. 添加后端API端点
-
-在后端添加创建房间的API：
-
-```typescript
-// routes/room.routes.ts
-router.post('/rooms', async (ctx) => {
-  const { title, streamerId } = ctx.request.body;
-  const room = new LiveRoom({
-    title,
-    streamerId,
-    status: 'created',
-    startTime: Date.now()
-  });
-  await room.save();
-  ctx.body = { roomId: room._id };
-});
-```
-
-### 3. 修改信令服务处理
-
-在 `webrtc-signaling.service.ts` 中增加房间验证逻辑：
-
-```typescript
-private async handleMessage(ws: WebSocket, message: SignalingMessage) {
-  const { type, roomId, payload } = message;
-
-  // 验证房间ID
-  if (!roomId || roomId.length !== 24) {
-    ws.send(JSON.stringify({ 
-      type: 'error', 
-      payload: '无效的房间ID' 
-    }));
-    return;
-  }
-
-  // 其余代码保持不变...
+vhost __defaultVhost__ {
+    live on;
+    http_remux {
+        enabled     on;
+        mount       [vhost]/[app]/[stream].flv;
+    }
+    rtc {
+        enabled     on;
+        rtmp_to_rtc on;
+        rtc_to_rtmp on;
+    }
 }
 ```
 
-## 实施步骤
+### 2. OBS 推流设置指南
 
-1. 在后端添加创建房间的API端点
-2. 修改前端直播页面的房间ID处理逻辑
-3. 更新WebSocket信令服务的错误处理
-4. 添加房间状态管理
-5. 测试所有场景：
-   - 主播创建新直播
-   - 观众进入已存在的直播
-   - 处理无效房间ID的情况
+1. OBS 基础设置：
+   - 流类型：自定义流媒体服务器
+   - 服务器：rtmp://localhost:1935/live
+   - 串流密钥：与直播房间 ID 对应 (67aee006c491e8b3f3f73cd4)
 
-## 注意事项
+2. OBS 视频设置：
+   - 输出分辨率：1920x1080 或 1280x720
+   - 帧率：30fps
+   - 码率：2500-4000 Kbps
 
-1. 确保新创建的房间ID立即可用
-2. 适当处理房间创建失败的情况
-3. 添加适当的错误提示
-4. 考虑添加房间清理机制
+### 3. 验证步骤
+
+1. 重启 SRS 服务：
+```bash
+docker-compose restart srs
+```
+
+2. 验证 SRS WebRTC API：
+   - 测试端点：http://localhost:8080/rtc/v1/publish
+   - 确保返回正确响应而不是空响应
+
+3. OBS 推流测试：
+   - 按照上述配置设置 OBS
+   - 开始推流
+   - 验证 SRS 服务器是否正确接收流
+   - 验证网页播放器是否正确显示直播内容
+
+## 三、预期效果
+
+1. SRS 服务器正常接收 OBS 推流
+2. 网页端可以正常播放直播内容
+3. WebRTC 连接建立正常，没有 ICE 连接错误
+
+## 四、故障排查指南
+
+如果遇到问题，按以下步骤排查：
+
+1. 检查 SRS 日志：
+```bash
+docker-compose logs srs
+```
+
+2. 验证 WebRTC 连接状态：
+   - 使用浏览器开发工具查看 WebRTC 连接状态
+   - 检查 ICE 候选项收集过程
+
+3. 确认 OBS 推流状态：
+   - 查看 OBS 推流指示器
+   - 检查 OBS 日志是否有错误信息
+
+## 五、后续优化
+
+1. 监控方案：
+   - 添加 WebRTC 连接状态监控
+   - 添加推流质量监控
+   - 实现自动重连机制
+
+2. 性能优化：
+   - 优化 WebRTC 传输参数
+   - 实现自适应码率

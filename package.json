@@ -30,6 +30,7 @@
     "@types/ws": "^8.5.14",
     "@types/yamljs": "^0.2.34",
     "dotenv": "^16.4.7",
+    "install": "^0.13.0",
     "jsonwebtoken": "^9.0.2",
     "koa": "^2.15.3",
     "koa-bodyparser": "^4.4.1",

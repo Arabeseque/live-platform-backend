@@ -10,6 +10,11 @@ interface CreateRoomBody {
     title: string;
 }
 
+interface WHIPSessionResponse {
+    url: string;
+    token: string;
+}
+
 @injectable()
 export class WebRTCController {
     /**
@@ -19,7 +24,7 @@ export class WebRTCController {
         console.log('createRoom');
         try {
             const { title } = ctx.request.body as CreateRoomBody;
-            const userId = ctx.state.user._id; // 从JWT中获取用户ID
+            const userId = ctx.state.user.id; // 修改这里：从 _id 改为 id
 
             // 生成唯一的streamKey
             const streamKey = `stream-${Math.random().toString(36).substr(2, 9)}`;
@@ -33,11 +38,18 @@ export class WebRTCController {
 
             await room.save();
 
+            // 生成WHIP推流配置
+            const whipCredentials = await room.generateWHIPCredentials();
+
             ctx.body = {
                 success: true,
-                data: room
+                data: {
+                    room,
+                    whip: whipCredentials
+                }
             };
         } catch (error: any) {
+            console.error('创建房间错误:', error);
             ctx.status = 500;
             ctx.body = {
                 success: false,
@@ -47,9 +59,9 @@ export class WebRTCController {
     }
 
     /**
-     * 获取直播间WebRTC配置
+     * 获取直播间WHIP配置
      */
-    async getRoomConfig(ctx: Context) {
+    async getWHIPConfig(ctx: Context) {
         try {
             const roomId = ctx.params.roomId;
             const room = await LiveRoom.findById(roomId);
@@ -63,14 +75,26 @@ export class WebRTCController {
                 return;
             }
 
-            // 返回WebRTC所需的配置信息
+            // 检查是否是房主
+            if (room.user_id.toString() !== ctx.state.user.id) {
+                ctx.status = 403;
+                ctx.body = {
+                    success: false,
+                    message: '只有房主可以获取推流配置'
+                };
+                return;
+            }
+
+            // 生成或获取WHIP配置
+            const whipConfig = await room.generateWHIPCredentials();
+            
             ctx.body = {
                 success: true,
                 data: {
                     roomId: room._id,
                     streamKey: room.stream_key,
-                    webrtcUrl: `webrtc://${ctx.host}:8000/live/${room.stream_key}`,
-                    wsUrl: `ws://${ctx.host}:8088/rtc`
+                    whip: whipConfig,
+                    playUrl: `webrtc://${process.env.SRS_HOST || 'localhost'}/live/${room.stream_key}` // WebRTC 播放地址
                 }
             };
         } catch (error: any) {
@@ -145,6 +169,29 @@ export class WebRTCController {
                 }
             };
         } catch (error: any) {
+            ctx.status = 500;
+            ctx.body = {
+                success: false,
+                message: error.message
+            };
+        }
+    }
+
+    /**
+     * 获取所有直播间列表
+     */
+    async getRooms(ctx: Context) {
+        try {
+            const rooms = await LiveRoom.find()
+                .sort({ created_at: -1 })
+                .select('title status start_time end_time user_id');
+
+            ctx.body = {
+                success: true,
+                data: rooms
+            };
+        } catch (error: any) {
+            console.error('获取房间列表失败:', error);
             ctx.status = 500;
             ctx.body = {
                 success: false,
