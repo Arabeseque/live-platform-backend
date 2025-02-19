@@ -22,6 +22,7 @@ export class RoomController {
         end_time: room.end_time,
         viewer_count: room.viewer_count,
         stream_key: room.stream_key,
+        user_id: room.user_id,
         streamUrls: {
           flv: `${process.env.STREAM_HTTP_URL}/${room.stream_key}.flv`,
           hls: `${process.env.STREAM_HLS_URL}/${room.stream_key}.m3u8`,
@@ -77,6 +78,7 @@ export class RoomController {
         end_time: room.end_time,
         viewer_count: room.viewer_count,
         stream_key: room.stream_key,
+        user_id: room.user_id,
         streamUrls: {
           flv: `${process.env.STREAM_HTTP_URL}/${room.stream_key}.flv`,
           hls: `${process.env.STREAM_HLS_URL}/${room.stream_key}.m3u8`,
@@ -111,6 +113,7 @@ export class RoomController {
         end_time: room.end_time,
         viewer_count: room.viewer_count,
         stream_key: room.stream_key,
+        user_id: room.user_id,
         streamUrls: {
           flv: `${process.env.STREAM_HTTP_URL}/${room.stream_key}.flv`,
           hls: `${process.env.STREAM_HLS_URL}/${room.stream_key}.m3u8`,
@@ -156,6 +159,7 @@ export class RoomController {
         end_time: room.end_time,
         viewer_count: room.viewer_count,
         stream_key: room.stream_key,
+        user_id: room.user_id,
         streamUrls: {
           flv: `${process.env.STREAM_HTTP_URL}/${room.stream_key}.flv`,
           hls: `${process.env.STREAM_HLS_URL}/${room.stream_key}.m3u8`,
@@ -201,6 +205,7 @@ export class RoomController {
         end_time: room.end_time,
         viewer_count: room.viewer_count,
         stream_key: room.stream_key,
+        user_id: room.user_id,
         streamUrls: {
           flv: `${process.env.STREAM_HTTP_URL}/${room.stream_key}.flv`,
           hls: `${process.env.STREAM_HLS_URL}/${room.stream_key}.m3u8`,

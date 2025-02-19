@@ -19,18 +19,29 @@ const router = new Router({
 // SRS 推流开始回调
 router.post('/on_publish', async (ctx: Context) => {
   const { app, stream } = ctx.request.body as SRSCallbackBody;
+  console.log('收到推流请求:', { stream_key: stream, body: ctx.request.body });
+  
   const liveRoom = await LiveRoom.findOne({ stream_key: stream });
+  console.log('查询到的房间:', liveRoom ? {
+    id: liveRoom._id,
+    status: liveRoom.status,
+    stream_key: liveRoom.stream_key,
+    has_stream: liveRoom.has_stream
+  } : null);
   
   if (liveRoom) {
     // 只有在房间状态为 living 时才处理推流
     if (liveRoom.status === 'living') {
+      console.log(`房间 ${liveRoom._id} 状态正确，处理推流开始`);
       await liveRoom.handleStreamStart();
       ctx.body = { code: 0 };
     } else {
+      console.log(`房间 ${liveRoom._id} 状态错误: ${liveRoom.status}`);
       ctx.status = 403;
       ctx.body = { code: 1, message: '直播间未开始直播' };
     }
   } else {
+    console.log('未找到直播间:', { stream_key: stream });
     ctx.status = 404;
     ctx.body = { code: 1, message: 'Stream not found' };
   }

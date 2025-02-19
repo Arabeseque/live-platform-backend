@@ -11,16 +11,37 @@ const startGlobalCheck = () => {
   }
 
   globalCheckInterval = setInterval(async () => {
-    const rooms = await mongoose.model('LiveRoom').find({ 
+    // 处理 idle 状态超过2分钟未推流的房间
+    const idleRooms = await mongoose.model('LiveRoom').find({
+      status: 'idle',
+      createdAt: { $lt: new Date(Date.now() - 2 * 60 * 1000) }  // 2分钟
+    });
+
+    for (const room of idleRooms) {
+      console.log(`房间 ${room._id} 创建超过2分钟未开播，自动删除`);
+      
+      websocketController.broadcast({
+        type: 'roomDeleted',
+        data: {
+          roomId: room._id,
+          reason: '直播间创建超过2分钟未开播，已自动删除'
+        }
+      });
+
+      await room.deleteOne();
+    }
+
+    // 处理 living 状态超过1分钟未推流的房间
+    const livingRooms = await mongoose.model('LiveRoom').find({ 
       status: 'living',
       has_stream: false,
       $or: [
-        { last_stream_time: { $lt: new Date(Date.now() - 60000) } }, // 1分钟没有推流
+        { last_stream_time: { $lt: new Date(Date.now() - 60000) } }, // 1分钟
         { last_stream_time: null }
       ]
     });
 
-    for (const room of rooms) {
+    for (const room of livingRooms) {
       console.log(`房间 ${room._id} 长时间未推流，自动结束直播`);
       
       websocketController.broadcast({
@@ -86,26 +107,6 @@ liveRoomSchema.methods.startLive = async function() {
   this.has_stream = false;
   this.last_stream_time = null;
   await this.save();
-
-  // 设置2分钟检查计时器
-  this.cleanupTimeout();
-  this.stream_check_timeout = setTimeout(async () => {
-    if (!this.has_stream) {
-      console.log(`直播间 ${this._id} 超过2分钟未推流，自动删除`);
-      
-      // 通过 WebSocket 通知前端
-      websocketController.broadcast({
-        type: 'roomDeleted',
-        data: {
-          roomId: this._id,
-          reason: '超过2分钟未推流，直播间已自动删除'
-        }
-      });
-
-      // 删除房间
-      await this.delete();
-    }
-  }, 2 * 60 * 1000); // 2分钟
 };
 
 // 结束直播
