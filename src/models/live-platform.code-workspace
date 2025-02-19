@@ -1,0 +1,18 @@
+{
+	"folders": [
+		{
+			"name": "live-platform",
+			"path": "../.."
+		},
+		{
+			"name": "vitesse-lite",
+			"path": "../../../../coding/live-room-front-end/vitesse-lite"
+		}
+	],
+	"settings": {
+		"files.associations": {
+			"*.css": "postcss"
+		},
+		"liveServer.settings.multiRootWorkspaceName": "live-platform"
+	}
+}
