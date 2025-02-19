@@ -1,8 +1,9 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "module": "ESNext",
-    "moduleResolution": "node",
+    "module": "ES2020",
+    "moduleResolution": "Node",
+    "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
@@ -17,6 +18,10 @@
       "@tests/*": ["tests/*"]
     },
     "types": ["vitest/globals", "node"]
+  },
+  "ts-node": {
+    "esm": true,
+    "experimentalSpecifierResolution": "node"
   },
   "include": ["src/**/*", "tests/**/*", "vitest.config.ts"],
   "exclude": ["node_modules", "dist"]

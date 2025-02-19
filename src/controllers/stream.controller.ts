@@ -1,6 +1,7 @@
 import Router from '@koa/router';
 import { Context } from 'koa';
 import LiveRoom from '../models/live-room.model';
+import { websocketController } from '../controllers/websocket.controller';
 
 interface SRSCallbackBody {
   app: string;
@@ -45,9 +46,19 @@ router.post('/on_unpublish', async (ctx: Context) => {
     liveRoom.has_stream = false;
     await liveRoom.save();
     
-    // 如果房间状态是 living，更新为已结束
+    // 只有当房间状态为 living 时才结束直播
+    // 如果是 idle 状态，让初始检查计时器继续运行
     if (liveRoom.status === 'living') {
+      console.log(`房间 ${liveRoom._id} 推流结束，结束直播`);
       await liveRoom.endLive();
+      
+      websocketController.broadcast({
+        type: 'roomEnded',
+        data: {
+          roomId: liveRoom._id,
+          reason: '主播结束推流，直播已结束'
+        }
+      });
     }
     
     ctx.body = { code: 0 };
@@ -103,4 +114,4 @@ router.get('/info/:streamId', async (ctx: Context) => {
   };
 });
 
-export default router; 
+export default router;
